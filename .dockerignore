@@ -1,3 +1,8 @@
-ui
 .github
 .git
+# Ignore node modules in ui but include built dist so Docker image can copy static assets
+ui/node_modules
+ui/**/node_modules
+ui/.pnpm-store
+!ui/build/dist
+!ui/build/dist/**

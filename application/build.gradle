@@ -124,9 +124,10 @@ tasks.register('createChecksums', Checksum) {
 }
 
 tasks.register('copyUiDist', Copy) {
+    // Ensure the UI is built before copying its dist output into application resources
+    dependsOn ':ui:doBuild'
     from project(':ui').layout.buildDirectory.dir('dist')
     into layout.buildDirectory.dir('resources/main')
-    mustRunAfter ':ui:doBuild'
 }
 
 tasks.named('processResources', ProcessResources) {
