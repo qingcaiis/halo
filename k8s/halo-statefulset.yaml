@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: halo
+  namespace: halo
+  labels:
+    app: halo
+spec:
+  ports:
+    - port: 8090
+      name: http
+  selector:
+    app: halo
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: halo
+  namespace: halo
+  labels:
+    app: halo
+spec:
+  serviceName: halo
+  replicas: 3
+  selector:
+    matchLabels:
+      app: halo
+  template:
+    metadata:
+      labels:
+        app: halo
+    spec:
+      containers:
+        - name: halo
+          image: ghcr.io/halo-dev/halo:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8090
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "mysql"
+            - name: SPRING_R2DBC_URL
+              value: "r2dbc:pool:mysql://mysql.halo.svc.cluster.local:3306/halo"
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://mysql.halo.svc.cluster.local:3306/halo"
+            - name: SPRING_REDIS_HOST
+              value: "redis.halo.svc.cluster.local"
+            - name: SPRING_REDIS_PORT
+              value: "6379"
+            - name: HALO_CACHE_TYPE
+              value: "redis"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8090
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+      # simple anti-affinity to spread pods
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - halo
+                topologyKey: kubernetes.io/hostname

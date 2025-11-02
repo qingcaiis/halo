@@ -15,6 +15,11 @@ COPY --from=builder application/spring-boot-loader/ ./
 COPY --from=builder application/snapshot-dependencies/ ./
 COPY --from=builder application/application/ ./
 
+# If the console UI has been built (ui/dist/console), copy it into the classpath root
+# so the application can serve it as classpath:/console/index.html
+# Note: this step requires the UI to be built before docker build, e.g. `pnpm --filter ui build`.
+COPY ui/dist/console ./console
+
 ENV JVM_OPTS="-Xmx256m -Xms256m" \
     HALO_WORK_DIR="/root/.halo2" \
     SPRING_CONFIG_LOCATION="optional:classpath:/;optional:file:/root/.halo2/" \

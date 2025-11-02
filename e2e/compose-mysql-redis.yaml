@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  halo:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: halo-local:latest
+    container_name: halo-local
+    environment:
+      - SPRING_PROFILES_ACTIVE=mysql
+      - SPRING_R2DBC_URL=r2dbc:pool:mysql://mysql:3306/halo
+      - SPRING_R2DBC_USERNAME=root
+      - SPRING_R2DBC_PASSWORD=halo
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/halo
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_URL=redis://redis:6379
+      - HALO_CACHE_TYPE=redis
+      - "JVM_OPTS=-Dspring.redis.host=redis -Dspring.redis.port=6379"
+    ports:
+      - "8090:8090"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  mysql:
+    image: mysql:8.1.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=halo
+      - MYSQL_DATABASE=halo
+    command:
+      - --default-authentication-plugin=caching_sha2_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --explicit_defaults_for_timestamp=true
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  redis:
+    image: redis:7.2-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis-data:/data
+
+volumes:
+  mysql-data:
+  redis-data:
